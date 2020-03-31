@@ -1,13 +1,13 @@
-name: 'Hello World'
-description: 'Greet someone and record the time'
+name: 'Copy to Dropbox'
+description: 'Uploads artifacts to dropbox'
 inputs:
-  who-to-greet:  # id of input
-    description: 'Who to greet'
+  token: 
+    description: 'DropBox access token'
     required: true
-    default: 'World'
+    default: 'error'
 outputs:
   time: # id of output
     description: 'The time we greeted you'
 runs:
   using: 'node12'
-  main: 'index.js'
+  main: 'main.js'
