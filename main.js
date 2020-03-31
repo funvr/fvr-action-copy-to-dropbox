@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios').default;
 
+const srcPath = core.getInput('srcPath', { required: true });
+const dstPath = core.getInput('dstPath', { required: true })
 const dropboxToken = core.getInput('token', { required: true });
 core.setSecret(dropboxToken);
 
@@ -11,10 +13,12 @@ var filesToUpload = [];
 var directoriesToUpload = [];
 
 testAuthentication();
-listDirContents(core.getInput('srcPath', { required: true }));
+listDirContents(srcPath);
 
 console.log("Files: " + filesToUpload);
 console.log("Dirs: " + directoriesToUpload);
+
+testUpload();
 
 function testAuthentication() {
   const url = "https://api.dropboxapi.com/2/check/user";
@@ -48,11 +52,36 @@ function listDirContents(rootPath) {
   });
 }
 
-function uploadFile() {
-
+function testUpload() {
+  for (var i = 0; i < filesToUpload.length; i++) {
+    uploadFile(filesToUpload[i]);
+  }
 }
 
-function getFileData(filePath) {
-  var data = null;
+function uploadFile(filePath) {
+  let fileDstPath = filePath.replace(srcPath, dstPath);
+  console.log("Uploading to: " + fileDstPath);
 
+  const fileContent = fs.readFileSync(filePath);
+  const apiArgs = {
+    path: fileDstPath,
+    mute: true
+  }
+
+  const url = "https://content.dropboxapi.com/2/files/upload";
+  axios({
+    url: url,
+    method: 'post',
+    headers: {
+      'Authorization' : 'Bearer ' + dropboxToken,
+      'Content-Type' : 'application/octet-stream',
+      'Dropbox-API-Arg' : JSON.stringify(apiArgs)
+    },
+    data : fileContent
+  }).then(function (response) {
+    console.log(response.name + ' Uploaded');
+  }).catch(function (error) {
+    console.log(error);
+    core.setFailed(error);
+  });
 }
