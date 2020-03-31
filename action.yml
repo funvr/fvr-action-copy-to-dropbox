@@ -5,9 +5,12 @@ inputs:
     description: 'DropBox access token'
     required: true
     default: 'error'
-outputs:
-  time: # id of output
-    description: 'The time we greeted you'
+  srcPath:
+    description: 'Path of assets to upload'
+    required: true
+  dstPath:
+    description: 'Path on Dropbox to place assets'
+    required: true
 runs:
   using: 'node12'
   main: 'main.js'
