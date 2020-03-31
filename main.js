@@ -1,6 +1,7 @@
 const core = require('@actions/core');
 const github = require('@actions/github');
 const fs = require('fs');
+const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 
 const dropboxToken = core.getInput('token', { required: true });
 core.setSecret(dropboxToken);
@@ -8,8 +9,6 @@ core.setSecret(dropboxToken);
 testAuthentication();
 
 function testAuthentication() {
-  console.log("Token: " + dropboxToken);
-
   const url = "https://api.dropboxapi.com/2/check/user";
   let req = new XMLHttpRequest();
   req.onreadystatechange = function() {
