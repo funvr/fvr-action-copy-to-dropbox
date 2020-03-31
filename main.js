@@ -10,12 +10,12 @@ testAuthentication();
 
 function testAuthentication() {
   const url = "https://api.dropboxapi.com/2/check/user";
-  
+
   axios({
     url: url,
     method: 'post',
     headers: {
-      'Authorization' : 'Bearer: ' + dropboxToken,
+      'Authorization' : 'Bearer ' + dropboxToken,
       'Content-Type' : 'application/json'
     },
     data : "{\"query\": \"foo\"}"
