@@ -20,6 +20,7 @@
   "dependencies": {
     "@actions/core": "^1.2.3",
     "@actions/github": "^2.1.1",
+    "cross-blob": "^1.2.2",
     "xmlhttprequest": "^1.8.0"
   }
 }

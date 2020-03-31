@@ -2,6 +2,7 @@ const core = require('@actions/core');
 const github = require('@actions/github');
 const fs = require('fs');
 const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+const Blob = require("cross-blob");
 
 const dropboxToken = core.getInput('token', { required: true });
 core.setSecret(dropboxToken);
