@@ -22,7 +22,7 @@ function testAuthentication() {
       }
     }
   };
-  req.addEventListener("progress", updateProgress);
+
   req.addEventListener("load", transferComplete);
   req.addEventListener("error", transferFailed);
   req.setRequestHeader("Authorization", "Bearer " + dropboxToken);
