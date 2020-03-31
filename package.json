@@ -1,0 +1,24 @@
+{
+  "name": "fvr-action-copy-to-dropbox",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/funvr/fvr-action-copy-to-dropbox.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/funvr/fvr-action-copy-to-dropbox/issues"
+  },
+  "homepage": "https://github.com/funvr/fvr-action-copy-to-dropbox#readme",
+  "dependencies": {
+    "@actions/core": "^1.2.3",
+    "@actions/github": "^2.1.1"
+  }
+}
