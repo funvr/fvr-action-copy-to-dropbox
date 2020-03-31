@@ -1,8 +1,7 @@
 const core = require('@actions/core');
 const github = require('@actions/github');
 const fs = require('fs');
-const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
-const Blob = require("cross-blob");
+const axios = require('axios').default;
 
 const dropboxToken = core.getInput('token', { required: true });
 core.setSecret(dropboxToken);
@@ -11,33 +10,23 @@ testAuthentication();
 
 function testAuthentication() {
   const url = "https://api.dropboxapi.com/2/check/user";
-  let req = new XMLHttpRequest();
-  req.onreadystatechange = function() {
-    if(xhr.readyState === XMLHttpRequest.DONE) {
-      var status = xhr.status;
-      if (status === 0 || (status >= 200 && status < 400)) {
-        // The request has been completed successfully
-        console.log(xhr.responseText);
-      } else {
-        // Oh no! There has been an error with the request!
-      }
-    }
-  };
-  req.open("POST", url, false);
-  req.addEventListener("load", transferComplete);
-  req.addEventListener("error", transferFailed);
-  req.setRequestHeader("Authorization", "Bearer " + dropboxToken);
-  req.setRequestHeader("Content-Type", "application/json");
-  let data = new Blob("{\"query\": \"foo\"}", {type: 'application/json'});
-
-  req.send(data);
-}
-
-function transferComplete(event) {
-  console.log("The transfer is complete. " + event);
-}
-
-function transferFailed(event) {
-  console.log("An error occurred.");
-  core.setFailed(event);
+  
+  axios({
+    url: url,
+    method: 'post',
+    headers: {
+      'Authorization' : 'Bearer: ' + dropboxToken,
+      'Content-Type' : 'application/json'
+    },
+    data : "{\"query\": \"foo\"}"
+  }).then(function (response) {
+    console.log(response.data);
+    console.log(response.status);
+    console.log(response.statusText);
+    console.log(response.headers);
+    console.log(response.config);
+  }).catch(function (error) {
+    console.log(error);
+    core.setFailed(error);
+  });
 }
