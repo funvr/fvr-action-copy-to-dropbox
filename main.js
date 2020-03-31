@@ -22,14 +22,13 @@ function testAuthentication() {
       }
     }
   };
-
+  req.open("POST", url, false);
   req.addEventListener("load", transferComplete);
   req.addEventListener("error", transferFailed);
   req.setRequestHeader("Authorization", "Bearer " + dropboxToken);
   req.setRequestHeader("Content-Type", "application/json");
   let data = new Blob("{\"query\": \"foo\"}", {type: 'application/json'});
 
-  req.open("POST", url, false);
   req.send(data);
 }
 
