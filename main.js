@@ -61,7 +61,9 @@ function listDirContents(rootPath) {
 function testUpload() {
   for (var i = 0; i < filesToUpload.length; i++) {
     // avoid dropbox rate limit
-    setTimeout(uploadFile(filesToUpload[i]), 2000);
+    setTimeout(function() { 
+      uploadFile(filesToUpload[i]) 
+    }, 2000);
   }
 }
 
