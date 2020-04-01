@@ -14,7 +14,7 @@ var filesToUpload = [];
 
 testAuthentication();
 getDirFilesRecursive(srcPath);
-testUpload(filesToUpload);
+testUpload(filesToUpload, 0);
 
 function testAuthentication() {
   const url = "https://api.dropboxapi.com/2/check/user";
@@ -50,15 +50,18 @@ function getDirFilesRecursive(rootPath) {
   });
 }
 
-function testUpload(files) {
-  files.forEach(file => {
-    setTimeout(() => {
-      uploadFile(file);
-    }, 3000);
+function testUpload(files, fileIndex) {
+  uploadFile(files[fileIndex], () => {
+    fileIndex++;
+    if (fileIndex >= files.length) {
+      console.log("All files uploaded");
+      return;
+    }
+    testUpload(files, fileIndex);
   });
 }
 
-function uploadFile(filePath) {
+function uploadFile(filePath, callback) {
   console.log("File: " + filePath);
   const fileDstPath = filePath.replace(srcPath, dstPath);
   console.log("Uploading to: " + fileDstPath);
@@ -82,10 +85,7 @@ function uploadFile(filePath) {
     data : fileContent
   }).then(function (response) {
     console.log('Upload Successful: ' + filePath);
-    let index = filesToUpload.indexOf(filePath);
-    if (index != -1) {
-      filesToUpload.splice(index, 1);
-    }
+    callback();
   }).catch(function (error) {
     if (error.response) {
       // Try again if it's a rate limit error
