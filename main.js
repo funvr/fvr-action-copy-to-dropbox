@@ -54,7 +54,7 @@ function testUpload(files) {
   files.forEach(file => {
     setTimeout(() => {
       uploadFile(file);
-    }, 2000);
+    }, 3000);
   });
 }
 
@@ -81,15 +81,16 @@ function uploadFile(filePath) {
     },
     data : fileContent
   }).then(function (response) {
-    console.log('Upload Successful\n' + response);
+    console.log('Upload Successful: ' + filePath);
+    let index = filesToUpload.indexOf(filePath);
+    if (index != -1) {
+      filesToUpload.splice(index, 1);
+    }
   }).catch(function (error) {
     if (error.response) {
       // Try again if it's a rate limit error
       if (error.response.headers['retry-after']) {
-        let wait = error.response.headers['retry-after'];
-        setTimeout(() => {
-          uploadFile(filePath);
-        }, wait * 2000);
+        console.log("Hit rate limit");
       } else {
         console.log("Not rate-limit error: ");
         console.log(error.response);
