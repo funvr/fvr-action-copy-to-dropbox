@@ -9,6 +9,9 @@ const dstPath = core.getInput('dstPath', { required: true })
 const dropboxToken = core.getInput('token', { required: true });
 core.setSecret(dropboxToken);
 
+// 150MB per upload limit on the Dropbox API
+const MAX_UPLOAD_BYTES = 157286400;
+
 var filesToUpload = [];
 var directoriesToUpload = [];
 
@@ -22,15 +25,19 @@ testUpload();
 
 function testAuthentication() {
   const url = "https://api.dropboxapi.com/2/check/user";
+  const data = {
+    query: "Test Authentication"
+  }
 
   axios({
     url: url,
     method: 'post',
+    maxContentLength: Infinity,
     headers: {
       'Authorization' : 'Bearer ' + dropboxToken,
       'Content-Type' : 'application/json'
     },
-    data : "{\"query\": \"test authentication\"}"
+    data : JSON.stringify(data)
   }).then(function (response) {
     console.log('Auth response: ' + response.status);
     console.log('Auth response: ' + response.statusText);
