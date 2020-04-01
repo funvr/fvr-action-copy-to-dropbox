@@ -84,20 +84,19 @@ function uploadFile(filePath) {
   }).then(function (response) {
     console.log(response.name + ' Uploaded Successfully');
   }).catch(function (error) {
-    console.log(error);
     if (error.response) {
       // Try again if it's a rate limit error
-      if (error.response.headers.Retry-After) {
-        let wait = error.response.headers.Retry-After;
+      if (error.response.headers['retry-after']) {
+        let wait = error.response.headers['retry-after'];
         setTimeout(() => {
           uploadFile(fileDstPath);
-        }, wait * 2000);
+        }, wait * 1000);
       } else {
         console.log("Not rate-limit error: ");
         console.log(error.response);
       }
     } else {
-      console.log("Unknown Error: " + error.message);
+      console.log("Unknown Error: " + error);
     }
     core.setFailed(error);
   });
