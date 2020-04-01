@@ -13,13 +13,11 @@ const MAX_UPLOAD_BYTES = 157286400;
 var filesToUpload = [];
 
 checkDropboxAuthentication();
-getDirFilesRecursive(srcPath);
-uploadBuild(filesToUpload);
 
 function checkDropboxAuthentication() {
   const url = "https://api.dropboxapi.com/2/check/user";
   const data = {
-    query: "Test Authentication"
+    query: "Check Authentication"
   }
 
   axios({
@@ -31,12 +29,23 @@ function checkDropboxAuthentication() {
     },
     data : JSON.stringify(data)
   }).then(function (response) {
-    console.log('Auth response: ' + response.status);
-    console.log('Auth response: ' + response.statusText);
+    onAuthenticationSuccess(response);
   }).catch(function (error) {
-    console.log(error);
-    core.setFailed(error);
+    onAuthenticationFail(error);
   });
+}
+
+function onAuthenticationSuccess(response) {
+  console.log('Auth response: ' + response.status);
+  console.log('Auth response: ' + response.statusText);
+
+  getDirFilesRecursive(srcPath);
+  uploadBuild();
+}
+
+function onAuthenticationFail(error) {
+  console.log(error);
+  core.setFailed(error);
 }
 
 function getDirFilesRecursive(dir) {
