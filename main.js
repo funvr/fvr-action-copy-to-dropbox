@@ -13,7 +13,7 @@ const MAX_UPLOAD_BYTES = 157286400;
 var filesToUpload = [];
 
 testAuthentication();
-listDirContents(srcPath);
+getDirFilesRecursive(srcPath);
 console.log("Files: " + filesToUpload);
 
 testUpload(filesToUpload);
@@ -41,11 +41,11 @@ function testAuthentication() {
   });
 }
 
-function listDirContents(rootPath) {
+function getDirFilesRecursive(rootPath) {
   fs.readdirSync(rootPath).forEach(item => {
     const fullPath = path.join(rootPath, item);
     if (fs.lstatSync(fullPath).isDirectory()) {
-      listDirContents(fullPath);
+      getDirFilesRecursive(fullPath);
     } else {
       filesToUpload.push(fullPath);
     }
@@ -82,9 +82,13 @@ function uploadFile(filePath) {
     },
     data : fileContent
   }).then(function (response) {
-    console.log(response.name + ' Uploaded');
+    console.log(response.name + ' Uploaded Successfully');
   }).catch(function (error) {
-    console.log(error);
-    core.setFailed(error);
+    console.log()
+    if (error.response) {
+      console.log(error.response.headers);
+    } else {
+      console.log("General Error: " + error.message);
+    }
   });
 }
