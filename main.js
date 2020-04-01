@@ -14,7 +14,7 @@ var filesToUpload = [];
 
 checkDropboxAuthentication();
 getDirFilesRecursive(srcPath);
-uploadBuild(filesToUpload, 0);
+uploadBuild(filesToUpload);
 
 function checkDropboxAuthentication() {
   const url = "https://api.dropboxapi.com/2/check/user";
@@ -39,9 +39,9 @@ function checkDropboxAuthentication() {
   });
 }
 
-function getDirFilesRecursive(rootPath) {
-  fs.readdirSync(rootPath).forEach(item => {
-    const fullPath = path.join(rootPath, item);
+function getDirFilesRecursive(dir) {
+  fs.readdirSync(dir).forEach(item => {
+    const fullPath = path.join(dir, item);
     if (fs.lstatSync(fullPath).isDirectory()) {
       getDirFilesRecursive(fullPath);
     } else {
@@ -50,28 +50,8 @@ function getDirFilesRecursive(rootPath) {
   });
 }
 
-function uploadBuild(files, fileIndex) {
-  uploadFile(files[fileIndex], onUploadSuccess, onUploadFail);
-}
-
-function onUploadSuccess(localFilePath, response) {
-  console.log('Upload Successful:' + localFilePath + '\n');
-  console.log(response.data);
-}
-
-function onUploadFail(error) {
-  if (error.response) {
-    // Try again if it's a rate limit error
-    if (error.response.headers['retry-after']) {
-      console.log("Hit rate limit");
-    } else {
-      console.log("Not rate-limit error: ");
-      console.log(error.response);
-    }
-  } else {
-    console.log("Unknown Error: " + error);
-  }
-  core.setFailed(error);
+function uploadBuild() {
+  uploadFile(filesToUpload[0], onUploadSuccess, onUploadFail);
 }
 
 function uploadFile(filePath, onSuccess, onFail) {
@@ -101,4 +81,39 @@ function uploadFile(filePath, onSuccess, onFail) {
   }).catch(function (error) {
     onFail(error);
   });
+}
+
+function onUploadSuccess(localFilePath, response) {
+  console.log('Upload Successful: ' + localFilePath + '\n');
+
+  // As we only attempt to upload the next file on success of the previous, index should always be 0
+  let index = filesToUpload.indexOf(localFilePath);
+  if (index == -1) {
+    console.log("ERROR: Cannot pop " + localFilePath);
+    core.setFailed("Internal error");
+    return;
+  } else {
+    filesToUpload.splice(index, 1);
+  }
+
+  if (filesToUpload.length == 0) {
+    return;
+  }
+
+  uploadFile(filesToUpload[0], onUploadSuccess, onUploadFail);
+}
+
+function onUploadFail(error) {
+  if (error.response) {
+    // Try again if it's a rate limit error
+    if (error.response.headers['retry-after']) {
+      console.log("Hit rate limit");
+    } else {
+      console.log("Not rate-limit error: ");
+      console.log(error.response);
+    }
+  } else {
+    console.log("Unknown Error: " + error);
+  }
+  core.setFailed(error);
 }
