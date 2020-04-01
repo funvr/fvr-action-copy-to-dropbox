@@ -12,11 +12,11 @@ core.setSecret(dropboxToken);
 const MAX_UPLOAD_BYTES = 157286400;
 var filesToUpload = [];
 
-testAuthentication();
+checkDropboxAuthentication();
 getDirFilesRecursive(srcPath);
-testUpload(filesToUpload, 0);
+uploadBuild(filesToUpload, 0);
 
-function testAuthentication() {
+function checkDropboxAuthentication() {
   const url = "https://api.dropboxapi.com/2/check/user";
   const data = {
     query: "Test Authentication"
@@ -50,18 +50,31 @@ function getDirFilesRecursive(rootPath) {
   });
 }
 
-function testUpload(files, fileIndex) {
-  uploadFile(files[fileIndex], () => {
-    fileIndex++;
-    if (fileIndex >= files.length) {
-      console.log("All files uploaded");
-      return;
-    }
-    testUpload(files, fileIndex);
-  });
+function uploadBuild(files, fileIndex) {
+  uploadFile(files[fileIndex], onUploadSuccess, onUploadFail);
 }
 
-function uploadFile(filePath, callback) {
+function onUploadSuccess(localFilePath, response) {
+  console.log('Upload Successful:' + localFilePath + '\n');
+  console.log(response.data);
+}
+
+function onUploadFail(error) {
+  if (error.response) {
+    // Try again if it's a rate limit error
+    if (error.response.headers['retry-after']) {
+      console.log("Hit rate limit");
+    } else {
+      console.log("Not rate-limit error: ");
+      console.log(error.response);
+    }
+  } else {
+    console.log("Unknown Error: " + error);
+  }
+  core.setFailed(error);
+}
+
+function uploadFile(filePath, onSuccess, onFail) {
   console.log("File: " + filePath);
   const fileDstPath = filePath.replace(srcPath, dstPath);
   console.log("Uploading to: " + fileDstPath);
@@ -84,20 +97,8 @@ function uploadFile(filePath, callback) {
     },
     data : fileContent
   }).then(function (response) {
-    console.log('Upload Successful: ' + filePath);
-    callback();
+    onSuccess(filePath, response);
   }).catch(function (error) {
-    if (error.response) {
-      // Try again if it's a rate limit error
-      if (error.response.headers['retry-after']) {
-        console.log("Hit rate limit");
-      } else {
-        console.log("Not rate-limit error: ");
-        console.log(error.response);
-      }
-    } else {
-      console.log("Unknown Error: " + error);
-    }
-    core.setFailed(error);
+    onFail(error);
   });
 }
