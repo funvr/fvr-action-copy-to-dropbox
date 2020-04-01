@@ -14,8 +14,6 @@ var filesToUpload = [];
 
 testAuthentication();
 getDirFilesRecursive(srcPath);
-console.log("Files: " + filesToUpload);
-
 testUpload(filesToUpload);
 
 function testAuthentication() {
@@ -61,6 +59,7 @@ function testUpload(files) {
 }
 
 function uploadFile(filePath) {
+  console.log("File: " + filePath);
   const fileDstPath = filePath.replace(srcPath, dstPath);
   console.log("Uploading to: " + fileDstPath);
 
@@ -82,7 +81,7 @@ function uploadFile(filePath) {
     },
     data : fileContent
   }).then(function (response) {
-    console.log(response.name + ' Uploaded Successfully');
+    console.log('Upload Successful\n' + response);
   }).catch(function (error) {
     if (error.response) {
       // Try again if it's a rate limit error
