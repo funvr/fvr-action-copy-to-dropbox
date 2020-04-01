@@ -1,5 +1,4 @@
 const core = require('@actions/core');
-const github = require('@actions/github');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios').default;
@@ -11,17 +10,13 @@ core.setSecret(dropboxToken);
 
 // 150MB per upload limit on the Dropbox API
 const MAX_UPLOAD_BYTES = 157286400;
-
 var filesToUpload = [];
-var directoriesToUpload = [];
 
 testAuthentication();
 listDirContents(srcPath);
-
 console.log("Files: " + filesToUpload);
-console.log("Dirs: " + directoriesToUpload);
 
-testUpload();
+testUpload(filesToUpload);
 
 function testAuthentication() {
   const url = "https://api.dropboxapi.com/2/check/user";
@@ -50,7 +45,6 @@ function listDirContents(rootPath) {
   fs.readdirSync(rootPath).forEach(item => {
     const fullPath = path.join(rootPath, item);
     if (fs.lstatSync(fullPath).isDirectory()) {
-      directoriesToUpload.push(fullPath);
       listDirContents(fullPath);
     } else {
       filesToUpload.push(fullPath);
@@ -58,17 +52,16 @@ function listDirContents(rootPath) {
   });
 }
 
-function testUpload() {
-  for (var i = 0; i < filesToUpload.length; i++) {
-    // avoid dropbox rate limit
-    setTimeout(function() { 
-      uploadFile(filesToUpload[i]) 
+function testUpload(files) {
+  files.forEach(file => {
+    setTimeout(() => {
+      uploadFile(file);
     }, 2000);
-  }
+  });
 }
 
 function uploadFile(filePath) {
-  let fileDstPath = filePath.replace(srcPath, dstPath);
+  const fileDstPath = filePath.replace(srcPath, dstPath);
   console.log("Uploading to: " + fileDstPath);
 
   const fileContent = fs.readFileSync(filePath);
