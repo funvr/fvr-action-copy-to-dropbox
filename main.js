@@ -89,8 +89,8 @@ function uploadFile(filePath) {
       if (error.response.headers['retry-after']) {
         let wait = error.response.headers['retry-after'];
         setTimeout(() => {
-          uploadFile(fileDstPath);
-        }, wait * 1000);
+          uploadFile(filePath);
+        }, wait * 2000);
       } else {
         console.log("Not rate-limit error: ");
         console.log(error.response);
