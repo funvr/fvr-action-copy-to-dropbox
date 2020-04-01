@@ -84,10 +84,11 @@ function uploadFile(filePath) {
   }).then(function (response) {
     console.log(response.name + ' Uploaded Successfully');
   }).catch(function (error) {
+    console.log(error);
     if (error.response) {
       // Try again if it's a rate limit error
-      if (error.response.headers.retry-after) {
-        let wait = error.response.headers.retry-after;
+      if (error.response.headers.Retry-After) {
+        let wait = error.response.headers.Retry-After;
         setTimeout(() => {
           uploadFile(fileDstPath);
         }, wait * 2000);
