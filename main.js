@@ -32,7 +32,6 @@ function testAuthentication() {
   axios({
     url: url,
     method: 'post',
-    maxContentLength: Infinity,
     headers: {
       'Authorization' : 'Bearer ' + dropboxToken,
       'Content-Type' : 'application/json'
@@ -61,7 +60,8 @@ function listDirContents(rootPath) {
 
 function testUpload() {
   for (var i = 0; i < filesToUpload.length; i++) {
-    uploadFile(filesToUpload[i]);
+    // avoid dropbox rate limit
+    setTimeout(uploadFile(filesToUpload[i]), 2000);
   }
 }
 
@@ -79,6 +79,7 @@ function uploadFile(filePath) {
   axios({
     url: url,
     method: 'post',
+    maxContentLength: MAX_UPLOAD_BYTES,
     headers: {
       'Authorization' : 'Bearer ' + dropboxToken,
       'Content-Type' : 'application/octet-stream',
