@@ -40,7 +40,7 @@ function onAuthenticationSuccess(response) {
   console.log('Auth response: ' + response.statusText);
 
   getDirFilesRecursive(srcPath);
-  uploadBuild();
+  startUpload();
 }
 
 function onAuthenticationFail(error) {
@@ -59,8 +59,21 @@ function getDirFilesRecursive(dir) {
   });
 }
 
-function uploadBuild() {
-  uploadFile(filesToUpload[0], onUploadSuccess, onUploadFail);
+function startUpload() {
+  let file = filesToUpload[0];
+  fs.stat(file, function(err, stats) {
+    if (err) {
+      core.setFailed(err.message);
+      return;
+    }
+    
+    if (stats.size <= MAX_UPLOAD_BYTES) {
+      uploadFile(file, onUploadSuccess, onUploadFail);
+      return;
+    }
+
+    uploadFileSession(file, stats, onUploadSuccess, onUploadFail);
+  });
 }
 
 function uploadFile(filePath, onSuccess, onFail) {
@@ -92,29 +105,168 @@ function uploadFile(filePath, onSuccess, onFail) {
   });
 }
 
+function uploadFileSession(filePath, fileStats, onSuccess, onFail) {
+  console.log("File: " + filePath);
+  const fileDstPath = filePath.replace(srcPath, dstPath);
+  console.log("Upload session start: " + fileDstPath);
+
+  const fd = fs.openSync(filePath);
+  const buffer = Buffer.alloc(MAX_UPLOAD_BYTES);
+
+  fs.read(fd, buffer, 0, buffer.size, 0, function(err, bytesRead, buff) {
+    fs.closeSync(fd);
+    if (err) {
+      core.setFailed(err.message);
+      return;
+    }
+
+    uploadSessionStart(buff, function(sessionId, numBytesSent) { 
+      onUploadChunkSuccess(sessionId, numBytesSent, filePath, fileStats); 
+    });
+  });
+}
+
+function uploadSessionStart(data, onChunkSent) {
+  const url = "https://content.dropboxapi.com/2/files/upload_session/start";
+
+  axios({
+    url: url,
+    method: 'post',
+    maxContentLength: MAX_UPLOAD_BYTES,
+    headers: {
+      'Authorization' : 'Bearer ' + dropboxToken,
+      'Content-Type' : 'application/octet-stream',
+    },
+    data: data
+  }).then(function (response) {
+    onChunkSent(response.data.session_id, data.size);
+  }).catch(function (error) {
+    console.log(error);
+    core.setFailed(error.message);
+  });
+}
+
+function onUploadChunkSuccess(sessionId, numBytesSent, filePath, fileStats) {
+  const remainingBytes = fileStats.size - numBytesSent;
+
+  if (remainingBytes <= MAX_UPLOAD_BYTES) {
+    uploadSessionFinish(sessionId, filePath, numBytesSent, remainingBytes, onUploadSuccess, onUploadFail);
+    return;
+  }
+
+  uploadSessionAppend(sessionId, filePath, numBytesSent, MAX_UPLOAD_BYTES, function(sessionId, numBytesSent) { 
+    onUploadChunkSuccess(sessionId, numBytesSent, filePath, fileStats);
+  }, onUploadFail);
+}
+
+function uploadSessionFinish(sessionId, filePath, offset, remainingBytes, onSuccess, onFail) {
+  console.log("File: " + filePath);
+  const fileDstPath = filePath.replace(srcPath, dstPath);
+  console.log("Upload session finish: " + fileDstPath);
+
+  const buffer = Buffer.alloc(remainingBytes);
+  const fd = fs.openSync(filePath);
+
+  fs.read(fd, buffer, 0, buffer.size, offset, function(err, bytesRead, buff) {
+    fs.closeSync(fd);
+
+    if (err) {
+      console.log(err);
+      core.setFailed(err.message);
+      return;
+    }
+
+    const url = "https://content.dropboxapi.com/2/files/upload_session/finish";
+    const apiArgs = {
+      cursor: {
+        session_id: sessionId,
+        offset: offset
+      },
+      commit: {
+        path: fileDstPath,
+        mute: true
+      }
+    }
+    
+    axios({
+      url: url,
+      method: 'post',
+      maxContentLength: MAX_UPLOAD_BYTES,
+      headers: {
+        'Authorization' : 'Bearer ' + dropboxToken,
+        'Content-Type' : 'application/octet-stream',
+        'Dropbox-API-Arg' : JSON.stringify(apiArgs)
+      },
+      data: buff
+    }).then(function (response) {
+      onSuccess(filePath, response);
+    }).catch(function (error) {
+      onFail(error);
+    });
+  });
+}
+
+function uploadSessionAppend(sessionId, filePath, offset, remainingBytes, onSuccess, onFail) {
+  console.log("File: " + filePath);
+  const fileDstPath = filePath.replace(srcPath, dstPath);
+  console.log("Upload session append: " + fileDstPath);
+
+  const buffer = Buffer.alloc(remainingBytes);
+  const fd = fs.openSync(filePath);
+
+  fs.read(fd, buffer, 0, buffer.size, offset, function (err, bytesRead, buff) {
+    fs.closeSync(fd);
+
+    if (err) {
+      console.log(err);
+      core.setFailed(err.message);
+      return;
+    }
+
+    const url = "https://content.dropboxapi.com/2/files/upload_session/append_v2";
+    const apiArgs = {
+      cursor: {
+        session_id: sessionId,
+        offset: offset
+      },
+      close: false
+    };
+
+    axios({
+      url: url,
+      method: 'post',
+      maxContentLength: MAX_UPLOAD_BYTES,
+      headers: {
+        'Authorization' : 'Bearer ' + dropboxToken,
+        'Content-Type' : 'application/octet-stream',
+        'Dropbox-API-Arg' : JSON.stringify(apiArgs)
+      },
+      data: buff
+    }).then(function (response) {
+      onSuccess(sessionId, buffer.size);
+    }).catch(function (error) {
+      onFail(error);
+    });
+  })
+}
+
 function onUploadSuccess(localFilePath, response) {
   console.log('Upload Successful: ' + localFilePath + '\n');
 
   // As we only attempt to upload the next file on success of the previous, index should always be 0
-  let index = filesToUpload.indexOf(localFilePath);
-  if (index == -1) {
-    console.log("ERROR: Cannot pop " + localFilePath);
-    core.setFailed("Internal error");
-    return;
-  } else {
-    filesToUpload.splice(index, 1);
-  }
-
+  filesToUpload.splice(0, 1);
+  
   if (filesToUpload.length == 0) {
     return;
   }
 
-  uploadFile(filesToUpload[0], onUploadSuccess, onUploadFail);
+  startUpload();
 }
 
 function onUploadFail(error) {
   if (error.response) {
-    // Try again if it's a rate limit error
+    // Todo: Try again if it's a rate limit error
+    // Currently just logging occurances of this error
     if (error.response.headers['retry-after']) {
       console.log("Hit rate limit");
     } else {
