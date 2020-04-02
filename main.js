@@ -113,7 +113,7 @@ function uploadFileSession(filePath, fileStats) {
   const fd = fs.openSync(filePath);
   const buffer = Buffer.alloc(MAX_UPLOAD_BYTES);
 
-  fs.read(fd, buffer, 0, buffer.size, 0, function(err, bytesRead, buff) {
+  fs.read(fd, buffer, 0, MAX_UPLOAD_BYTES, 0, function(err, bytesRead, buff) {
     fs.closeSync(fd);
     if (err) {
       console.log(err);
@@ -121,13 +121,13 @@ function uploadFileSession(filePath, fileStats) {
       return;
     }
 
-    uploadSessionStart(buff, function(sessionId, numBytesSent) { 
+    uploadSessionStart(buff, MAX_UPLOAD_BYTES, function(sessionId, numBytesSent) { 
       onUploadChunkSuccess(sessionId, numBytesSent, filePath, fileStats); 
     });
   });
 }
 
-function uploadSessionStart(data, onChunkSent) {
+function uploadSessionStart(data, dataSize, onChunkSent) {
   const url = "https://content.dropboxapi.com/2/files/upload_session/start";
 
   axios({
@@ -140,7 +140,7 @@ function uploadSessionStart(data, onChunkSent) {
     },
     data: data
   }).then(function (response) {
-    onChunkSent(response.data.session_id, data.size);
+    onChunkSent(response.data.session_id, dataSize);
   }).catch(function (error) {
     console.log(error);
     core.setFailed(error.message);
@@ -169,7 +169,7 @@ function uploadSessionFinish(sessionId, filePath, offset, remainingBytes, onSucc
   const buffer = Buffer.alloc(remainingBytes);
   const fd = fs.openSync(filePath);
 
-  fs.read(fd, buffer, 0, buffer.size, offset, function(err, bytesRead, buff) {
+  fs.read(fd, buffer, 0, remainingBytes, offset, function(err, bytesRead, buff) {
     fs.closeSync(fd);
 
     if (err) {
@@ -216,7 +216,7 @@ function uploadSessionAppend(sessionId, filePath, offset, remainingBytes, onSucc
   const buffer = Buffer.alloc(remainingBytes);
   const fd = fs.openSync(filePath);
 
-  fs.read(fd, buffer, 0, buffer.size, offset, function (err, bytesRead, buff) {
+  fs.read(fd, buffer, 0, remainingBytes, offset, function (err, bytesRead, buff) {
     fs.closeSync(fd);
 
     if (err) {
@@ -248,7 +248,7 @@ function uploadSessionAppend(sessionId, filePath, offset, remainingBytes, onSucc
       },
       data: buff
     }).then(function (response) {
-      onSuccess(sessionId, buffer.size);
+      onSuccess(sessionId, remainingBytes);
     }).catch(function (error) {
       onFail(error);
     });
