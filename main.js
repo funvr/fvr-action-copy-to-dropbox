@@ -9,7 +9,7 @@ const dropboxToken = core.getInput('token', { required: true });
 core.setSecret(dropboxToken);
 
 // 150MB per upload limit on the Dropbox API
-const MAX_UPLOAD_BYTES = 157286400;
+const MAX_UPLOAD_BYTES = 1024 * 1024 * 150;
 var filesToUpload = [];
 
 checkDropboxAuthentication();
@@ -72,7 +72,7 @@ function startUpload() {
       return;
     }
 
-    uploadFileSession(file, stats, onUploadSuccess, onUploadFail);
+    uploadFileSession(file, stats);
   });
 }
 
@@ -105,7 +105,7 @@ function uploadFile(filePath, onSuccess, onFail) {
   });
 }
 
-function uploadFileSession(filePath, fileStats, onSuccess, onFail) {
+function uploadFileSession(filePath, fileStats) {
   console.log("File: " + filePath);
   const fileDstPath = filePath.replace(srcPath, dstPath);
   console.log("Upload session start: " + fileDstPath);
@@ -116,6 +116,7 @@ function uploadFileSession(filePath, fileStats, onSuccess, onFail) {
   fs.read(fd, buffer, 0, buffer.size, 0, function(err, bytesRead, buff) {
     fs.closeSync(fd);
     if (err) {
+      console.log(err);
       core.setFailed(err.message);
       return;
     }
@@ -148,14 +149,15 @@ function uploadSessionStart(data, onChunkSent) {
 
 function onUploadChunkSuccess(sessionId, numBytesSent, filePath, fileStats) {
   const remainingBytes = fileStats.size - numBytesSent;
+  console.log("Uploaded " + numBytesSent + " bytes.  Remaining: " + remainingBytes);
 
   if (remainingBytes <= MAX_UPLOAD_BYTES) {
     uploadSessionFinish(sessionId, filePath, numBytesSent, remainingBytes, onUploadSuccess, onUploadFail);
     return;
   }
 
-  uploadSessionAppend(sessionId, filePath, numBytesSent, MAX_UPLOAD_BYTES, function(sessionId, numBytesSent) { 
-    onUploadChunkSuccess(sessionId, numBytesSent, filePath, fileStats);
+  uploadSessionAppend(sessionId, filePath, numBytesSent, MAX_UPLOAD_BYTES, function(sessionId, totalBytesSent) { 
+    onUploadChunkSuccess(sessionId, totalBytesSent, filePath, fileStats);
   }, onUploadFail);
 }
 
@@ -232,6 +234,9 @@ function uploadSessionAppend(sessionId, filePath, offset, remainingBytes, onSucc
       close: false
     };
 
+    let jsonStr = JSON.stringify(apiArgs);
+    console.log("apiArgs: " + jsonStr);
+
     axios({
       url: url,
       method: 'post',
@@ -239,7 +244,7 @@ function uploadSessionAppend(sessionId, filePath, offset, remainingBytes, onSucc
       headers: {
         'Authorization' : 'Bearer ' + dropboxToken,
         'Content-Type' : 'application/octet-stream',
-        'Dropbox-API-Arg' : JSON.stringify(apiArgs)
+        'Dropbox-API-Arg' : jsonStr
       },
       data: buff
     }).then(function (response) {
