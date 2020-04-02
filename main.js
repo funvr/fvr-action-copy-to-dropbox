@@ -156,9 +156,11 @@ function onUploadChunkSuccess(sessionId, numBytesSent, filePath, fileStats) {
     return;
   }
 
-  uploadSessionAppend(sessionId, filePath, numBytesSent, MAX_UPLOAD_BYTES, function(sessionId, totalBytesSent) { 
-    onUploadChunkSuccess(sessionId, totalBytesSent, filePath, fileStats);
-  }, onUploadFail);
+  uploadSessionAppend(sessionId, filePath, numBytesSent, MAX_UPLOAD_BYTES, 
+    function(sessionId, totalBytesSent) { 
+      onUploadChunkSuccess(sessionId, totalBytesSent, filePath, fileStats);
+    }, 
+    onUploadFail);
 }
 
 function uploadSessionFinish(sessionId, filePath, offset, remainingBytes, onSuccess, onFail) {
@@ -208,15 +210,15 @@ function uploadSessionFinish(sessionId, filePath, offset, remainingBytes, onSucc
   });
 }
 
-function uploadSessionAppend(sessionId, filePath, offset, remainingBytes, onSuccess, onFail) {
+function uploadSessionAppend(sessionId, filePath, offset, numBytes, onSuccess, onFail) {
   console.log("File: " + filePath);
   const fileDstPath = filePath.replace(srcPath, dstPath);
   console.log("Upload session append: " + fileDstPath);
 
-  const buffer = Buffer.alloc(remainingBytes);
+  const buffer = Buffer.alloc(numBytes);
   const fd = fs.openSync(filePath);
 
-  fs.read(fd, buffer, 0, remainingBytes, offset, function (err, bytesRead, buff) {
+  fs.read(fd, buffer, 0, numBytes, offset, function (err, bytesRead, buff) {
     fs.closeSync(fd);
 
     if (err) {
@@ -248,7 +250,7 @@ function uploadSessionAppend(sessionId, filePath, offset, remainingBytes, onSucc
       },
       data: buff
     }).then(function (response) {
-      onSuccess(sessionId, remainingBytes);
+      onSuccess(sessionId, offset + numBytes);
     }).catch(function (error) {
       onFail(error);
     });
