@@ -23,7 +23,7 @@ function configDstPath() {
   }
 
   // If input dstPath is /My/Destination/Path/ProjectName/
-  // On April 4th 2020 at 09:30 fullDstPath will be /My/Destination/Path/2020-04/ProjectName_2020-04-03_09-30/
+  // On 3rd April 2020 at 09:30 fullDstPath will be /My/Destination/Path/2020-04/ProjectName_2020-04-03_09-30/
 
   let date = new Date();
   let year = date.getFullYear();
@@ -48,7 +48,7 @@ function configDstPath() {
   // Trim trailing '/'
   let pathLength = fullDstPath.length;
   if (fullDstPath[pathLength - 1] == '/') {
-    fullDstPath = fullDstPath.substring(pathLength -1, pathLength - 1);
+    fullDstPath = fullDstPath.substring(0, pathLength - 1);
   }
 
   let pathSplits = fullDstPath.split('/');
@@ -58,7 +58,7 @@ function configDstPath() {
   let hourMinute = hour + '-' + minute;
 
   fullDstPath = fullDstPath.replace(projectName, '');
-  fullDstPath = fullDstPath + '/' + yearMonth + '/' + projectName + '_' + yearMonth + '-' + day + '_' + hourMinute + '/';
+  fullDstPath = fullDstPath + yearMonth + '/' + projectName + '_' + yearMonth + '-' + day + '_' + hourMinute + '/';
 }
 
 function checkDropboxAuthentication() {
