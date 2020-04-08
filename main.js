@@ -4,7 +4,9 @@ const path = require('path');
 const axios = require('axios').default;
 
 const srcPath = core.getInput('srcPath', { required: true });
-const dstPath = core.getInput('dstPath', { required: true })
+const dstPath = core.getInput('dstPath', { required: true });
+let fullDstPath = dstPath;
+const appendTimestamp = (core.getInput('timestamp', {required: false}) == 'true');
 const dropboxToken = core.getInput('token', { required: true });
 core.setSecret(dropboxToken);
 
@@ -12,7 +14,52 @@ core.setSecret(dropboxToken);
 const MAX_UPLOAD_BYTES = 1024 * 1024 * 150;
 var filesToUpload = [];
 
+configDstPath();
 checkDropboxAuthentication();
+
+function configDstPath() {
+  if (!appendTimestamp) {
+    return;
+  }
+
+  // If input dstPath is /My/Destination/Path/ProjectName/
+  // On 3rd April 2020 at 09:30 fullDstPath will be /My/Destination/Path/2020-04/ProjectName_2020-04-03_09-30/
+
+  let date = new Date();
+  let year = date.getFullYear();
+  let month = date.getMonth() + 1;
+  if (month < 10) {
+    month = '0' + month;
+  }
+  let day = date.getDate();
+  if (day < 10) {
+    day = '0' + day;
+  }
+
+  let hour = date.getHours();
+  if (hour < 10) {
+    hour = '0' + hour;
+  }
+  let minute = date.getMinutes();
+  if (minute < 10) {
+    minute = '0' + minute;
+  }
+  
+  // Trim trailing '/'
+  let pathLength = fullDstPath.length;
+  if (fullDstPath[pathLength - 1] == '/') {
+    fullDstPath = fullDstPath.substring(0, pathLength - 1);
+  }
+
+  let pathSplits = fullDstPath.split('/');
+  // Use final directory name as project name
+  let projectName = pathSplits[pathSplits.length - 1];
+  let yearMonth = year + '-' + month;
+  let hourMinute = hour + '-' + minute;
+
+  fullDstPath = fullDstPath.replace(projectName, '');
+  fullDstPath = fullDstPath + yearMonth + '/' + projectName + '_' + yearMonth + '-' + day + '_' + hourMinute + '/';
+}
 
 function checkDropboxAuthentication() {
   const url = "https://api.dropboxapi.com/2/check/user";
@@ -78,7 +125,7 @@ function startUpload() {
 
 function uploadFile(filePath, onSuccess, onFail) {
   console.log("File: " + filePath);
-  const fileDstPath = filePath.replace(srcPath, dstPath);
+  const fileDstPath = filePath.replace(srcPath, fullDstPath);
   console.log("Uploading to: " + fileDstPath);
 
   const fileContent = fs.readFileSync(filePath);
@@ -107,7 +154,7 @@ function uploadFile(filePath, onSuccess, onFail) {
 
 function uploadFileSession(filePath, fileStats) {
   console.log("File: " + filePath);
-  const fileDstPath = filePath.replace(srcPath, dstPath);
+  const fileDstPath = filePath.replace(srcPath, fullDstPath);
   console.log("Upload session start: " + fileDstPath);
 
   const fd = fs.openSync(filePath);
@@ -165,7 +212,7 @@ function onUploadChunkSuccess(sessionId, numBytesSent, filePath, fileStats) {
 
 function uploadSessionFinish(sessionId, filePath, offset, remainingBytes, onSuccess, onFail) {
   console.log("File: " + filePath);
-  const fileDstPath = filePath.replace(srcPath, dstPath);
+  const fileDstPath = filePath.replace(srcPath, fullDstPath);
   console.log("Upload session finish: " + fileDstPath);
 
   const buffer = Buffer.alloc(remainingBytes);
@@ -212,7 +259,7 @@ function uploadSessionFinish(sessionId, filePath, offset, remainingBytes, onSucc
 
 function uploadSessionAppend(sessionId, filePath, offset, numBytes, onSuccess, onFail) {
   console.log("File: " + filePath);
-  const fileDstPath = filePath.replace(srcPath, dstPath);
+  const fileDstPath = filePath.replace(srcPath, fullDstPath);
   console.log("Upload session append: " + fileDstPath);
 
   const buffer = Buffer.alloc(numBytes);

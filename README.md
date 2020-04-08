@@ -18,12 +18,23 @@ Destination path prefix where files will be stored
 
 Note: Path must start with a leading /
 
+#### `timestamp`
+Boolean. If true will create month folder in dstPath and append timestamp to dstPath
+
+Default: false
+
+Will use final directory in dstPath as project name
+
+Example path given date of April 3rd 2020 at 09:30: `destination/path/2020-04/projectName_2020-04-03_09-30/`
+
 ## Example usage
 
 ```yaml
-uses: funvr/fvr-action-copy-to-dropbox@0.0.1
+uses: funvr/fvr-action-copy-to-dropbox@v0.3.0
     with:
         token: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
         srcPath: path/to/your/build/
-        dstPath: /destination/path/
+        dstPath: /destination/path/projectName/
+        timestamp: true
+
 ```

@@ -11,6 +11,10 @@ inputs:
   dstPath:
     description: 'Path on Dropbox to place assets'
     required: true
+  timestamp:
+    description: 'Flag to append dstPath with a timestamp'
+    required: false
+    default: 'false'
 runs:
   using: 'node12'
   main: 'main.js'
