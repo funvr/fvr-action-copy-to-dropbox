@@ -125,7 +125,7 @@ function startUpload() {
 
 function uploadFile(filePath, onSuccess, onFail) {
   console.log("File: " + filePath);
-  const fileDstPath = filePath.replace(srcPath, fullDstPath);
+  const fileDstPath = filePath.replace(srcPath, fullDstPath).replace("\\", "/");
   console.log("Uploading to: " + fileDstPath);
 
   const fileContent = fs.readFileSync(filePath);
@@ -154,7 +154,7 @@ function uploadFile(filePath, onSuccess, onFail) {
 
 function uploadFileSession(filePath, fileStats) {
   console.log("File: " + filePath);
-  const fileDstPath = filePath.replace(srcPath, fullDstPath);
+  const fileDstPath = filePath.replace(srcPath, fullDstPath).replace("\\", "/");
   console.log("Upload session start: " + fileDstPath);
 
   const fd = fs.openSync(filePath);
@@ -212,7 +212,7 @@ function onUploadChunkSuccess(sessionId, numBytesSent, filePath, fileStats) {
 
 function uploadSessionFinish(sessionId, filePath, offset, remainingBytes, onSuccess, onFail) {
   console.log("File: " + filePath);
-  const fileDstPath = filePath.replace(srcPath, fullDstPath);
+  const fileDstPath = filePath.replace(srcPath, fullDstPath).replace("\\", "/");
   console.log("Upload session finish: " + fileDstPath);
 
   const buffer = Buffer.alloc(remainingBytes);
@@ -259,7 +259,7 @@ function uploadSessionFinish(sessionId, filePath, offset, remainingBytes, onSucc
 
 function uploadSessionAppend(sessionId, filePath, offset, numBytes, onSuccess, onFail) {
   console.log("File: " + filePath);
-  const fileDstPath = filePath.replace(srcPath, fullDstPath);
+  const fileDstPath = filePath.replace(srcPath, fullDstPath).replace("\\", "/");
   console.log("Upload session append: " + fileDstPath);
 
   const buffer = Buffer.alloc(numBytes);
