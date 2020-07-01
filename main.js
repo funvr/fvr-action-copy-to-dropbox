@@ -103,69 +103,14 @@ function getDirFilesRecursive(dir) {
 }
 
 function startUpload() {
-  axios.interceptors.response.use(
-    function (response) {
-      // success, do nothing
-    }, function (error) {
-      const originalRequest = error.config;
-      console.log("Upload failed, retrying..");
-      console.log(originalRequest);
-      axios({
-        url: originalRequest.url,
-        data: originalRequest.data,
-        method: originalRequest.method,
-        headers: originalRequest.headers
-      }).then(function (response) {
-        onSuccess(filePath, response);
-      }).catch(function (error) {
-        onFail(error);
-      });
-    }
-  );
-
   let file = filesToUpload[0];
   fs.stat(file, function(err, stats) {
     if (err) {
       core.setFailed(err.message);
       return;
     }
-    
-    if (stats.size <= MAX_UPLOAD_BYTES) {
-      uploadFile(file, onUploadSuccess, onUploadFail);
-      return;
-    }
 
     uploadFileSession(file, stats);
-  });
-}
-
-function uploadFile(filePath, onSuccess, onFail) {
-  console.log("File: " + filePath);
-  let fileDstPath = filePath.replace(srcPath, fullDstPath);
-
-  console.log("Uploading to: " + fileDstPath);
-
-  const fileContent = fs.readFileSync(filePath);
-  const apiArgs = {
-    path: fileDstPath,
-    mute: true
-  }
-
-  const url = "https://content.dropboxapi.com/2/files/upload";
-  axios({
-    url: url,
-    method: 'post',
-    maxContentLength: MAX_UPLOAD_BYTES,
-    headers: {
-      'Authorization' : 'Bearer ' + dropboxToken,
-      'Content-Type' : 'application/octet-stream',
-      'Dropbox-API-Arg' : JSON.stringify(apiArgs)
-    },
-    data : fileContent
-  }).then(function (response) {
-    onSuccess(filePath, response);
-  }).catch(function (error) {
-    onFail(error);
   });
 }
 
@@ -194,7 +139,7 @@ function uploadFileSession(filePath, fileStats) {
 
 function uploadSessionStart(data, dataSize, onChunkSent) {
   const url = "https://content.dropboxapi.com/2/files/upload_session/start";
-
+  
   axios({
     url: url,
     method: 'post',
@@ -207,8 +152,25 @@ function uploadSessionStart(data, dataSize, onChunkSent) {
   }).then(function (response) {
     onChunkSent(response.data.session_id, dataSize);
   }).catch(function (error) {
-    console.log(error);
-    core.setFailed(error.message);
+    // ugly but will work
+    // retry this upload once more
+    console.log("Upload error: " + error);
+    console.log("Retrying");
+    axios({
+      url: url,
+      method: 'post',
+      maxContentLength: MAX_UPLOAD_BYTES,
+      headers: {
+        'Authorization' : 'Bearer ' + dropboxToken,
+        'Content-Type' : 'application/octet-stream',
+      },
+      data: data
+    }).then(function (response) {
+      onChunkSent(response.data.session_id, dataSize);
+    }).catch(function (error) {
+      console.log("Retry failed");
+      core.setFailed(error.message);
+    });
   });
 }
 
