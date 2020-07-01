@@ -103,6 +103,26 @@ function getDirFilesRecursive(dir) {
 }
 
 function startUpload() {
+  axios.interceptors.response.use(
+    function (response) {
+      // success, do nothing
+    }, function (error) {
+      const originalRequest = error.config;
+      console.log("Upload failed, retrying..");
+      console.log(originalRequest);
+      axios({
+        url: originalRequest.url,
+        data: originalRequest.data,
+        method: originalRequest.method,
+        headers: originalRequest.headers
+      }).then(function (response) {
+        onSuccess(filePath, response);
+      }).catch(function (error) {
+        onFail(error);
+      });
+    }
+  );
+
   let file = filesToUpload[0];
   fs.stat(file, function(err, stats) {
     if (err) {
