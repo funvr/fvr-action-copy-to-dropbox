@@ -120,10 +120,11 @@ function uploadFileSession(filePath, fileStats) {
 
   console.log("Upload session start: " + fileDstPath);
 
+  const uploadSize = fileStats.size >= MAX_UPLOAD_BYTES ? MAX_UPLOAD_BYTES : fileStats.size;
   const fd = fs.openSync(filePath);
-  const buffer = Buffer.alloc(MAX_UPLOAD_BYTES);
+  const buffer = Buffer.alloc(uploadSize);
 
-  fs.read(fd, buffer, 0, MAX_UPLOAD_BYTES, 0, function(err, bytesRead, buff) {
+  fs.read(fd, buffer, 0, uploadSize, 0, function(err, bytesRead, buff) {
     fs.closeSync(fd);
     if (err) {
       console.log(err);
@@ -131,7 +132,7 @@ function uploadFileSession(filePath, fileStats) {
       return;
     }
 
-    uploadSessionStart(buff, MAX_UPLOAD_BYTES, function(sessionId, numBytesSent) { 
+    uploadSessionStart(buff, uploadSize, function(sessionId, numBytesSent) { 
       onUploadChunkSuccess(sessionId, numBytesSent, filePath, fileStats); 
     });
   });
