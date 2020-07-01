@@ -5,6 +5,7 @@ const axios = require('axios').default;
 
 const srcPath = core.getInput('srcPath', { required: true });
 const dstPath = core.getInput('dstPath', { required: true });
+const projectName = core.getInput('projectName', {required: true });
 let fullDstPath = dstPath;
 const appendTimestamp = (core.getInput('timestamp', {required: false}) == 'true');
 const dropboxToken = core.getInput('token', { required: true });
@@ -22,9 +23,6 @@ function configDstPath() {
     return;
   }
 
-  // If input dstPath is /My/Destination/Path/ProjectName/
-  // On 3rd April 2020 at 09:30 fullDstPath will be /My/Destination/Path/2020-04/ProjectName_2020-04-03_09-30/
-
   let date = new Date();
   let year = date.getFullYear();
   let month = date.getMonth() + 1;
@@ -40,6 +38,7 @@ function configDstPath() {
   if (hour < 10) {
     hour = '0' + hour;
   }
+
   let minute = date.getMinutes();
   if (minute < 10) {
     minute = '0' + minute;
@@ -51,14 +50,10 @@ function configDstPath() {
     fullDstPath = fullDstPath.substring(0, pathLength - 1);
   }
 
-  let pathSplits = fullDstPath.split('/');
-  // Use final directory name as project name
-  let projectName = pathSplits[pathSplits.length - 1];
   let yearMonth = year + '-' + month;
   let hourMinute = hour + '-' + minute;
 
-  fullDstPath = fullDstPath.replace(projectName, '');
-  fullDstPath = fullDstPath + yearMonth + '/' + projectName + '_' + yearMonth + '-' + day + '_' + hourMinute + '/';
+  fullDstPath = fullDstPath + '/' + yearMonth + '/' + projectName + '/' + projectName + '_' + yearMonth + '-' + day + '_' + hourMinute + '/';
 }
 
 function checkDropboxAuthentication() {
@@ -107,6 +102,26 @@ function getDirFilesRecursive(dir) {
 }
 
 function startUpload() {
+  axios.interceptors.response.use(
+    function (response) {
+      // do nothing
+    }, function (error) {
+      const originalRequest = error.config;
+      console.log("Upload failed, retrying..");
+      console.log(originalRequest);
+      axios({
+        url: originalRequest.url,
+        data: originalRequest.data,
+        method: originalRequest.method,
+        headers: originalRequest.headers
+      }).then(function (response) {
+        onSuccess(filePath, response);
+      }).catch(function (error) {
+        onFail(error);
+      });
+    }
+  );
+
   let file = filesToUpload[0];
   fs.stat(file, function(err, stats) {
     if (err) {
@@ -319,8 +334,6 @@ function onUploadSuccess(localFilePath, response) {
 
 function onUploadFail(error) {
   if (error.response) {
-    // Todo: Try again if it's a rate limit error
-    // Currently just logging occurances of this error
     if (error.response.headers['retry-after']) {
       console.log("Hit rate limit");
     } else {
@@ -330,5 +343,4 @@ function onUploadFail(error) {
   } else {
     console.log("Unknown Error: " + error);
   }
-  core.setFailed(error);
 }
