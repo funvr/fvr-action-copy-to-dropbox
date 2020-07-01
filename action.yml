@@ -15,6 +15,9 @@ inputs:
     description: 'Flag to append dstPath with a timestamp'
     required: false
     default: 'false'
+  projectName:
+    description: 'Name of the project'
+    required: true
 runs:
   using: 'node12'
   main: 'main.js'
