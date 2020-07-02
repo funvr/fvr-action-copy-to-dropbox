@@ -153,25 +153,7 @@ function uploadSessionStart(data, dataSize, onChunkSent) {
   }).then(function (response) {
     onChunkSent(response.data.session_id, dataSize);
   }).catch(function (error) {
-    // ugly but will work
-    // retry this upload once more
-    console.log("Upload error: " + error);
-    console.log("Retrying");
-    axios({
-      url: url,
-      method: 'post',
-      maxContentLength: MAX_UPLOAD_BYTES,
-      headers: {
-        'Authorization' : 'Bearer ' + dropboxToken,
-        'Content-Type' : 'application/octet-stream',
-      },
-      data: data
-    }).then(function (response) {
-      onChunkSent(response.data.session_id, dataSize);
-    }).catch(function (error) {
-      console.log("Retry failed");
-      core.setFailed(error.message);
-    });
+    onUploadFail(error);
   });
 }
 
@@ -265,7 +247,6 @@ function uploadSessionAppend(sessionId, filePath, offset, numBytes, onSuccess, o
     };
 
     let jsonStr = JSON.stringify(apiArgs);
-    console.log("apiArgs: " + jsonStr);
 
     axios({
       url: url,
