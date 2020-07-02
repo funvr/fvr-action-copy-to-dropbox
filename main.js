@@ -300,13 +300,26 @@ function onUploadSuccess(localFilePath, response) {
 
 function onUploadFail(error) {
   if (error.response) {
-    if (error.response.headers['retry-after']) {
+    let statusCode = error.response.status;
+    let message = error.response.data;
+    if (statusCode == 429) {
       console.log("Hit rate limit");
+      let waitForSeconds = error.response.headers['retry-after'];
+      setTimeout(startUpload, waitForSeconds * 1000);
     } else {
-      console.log("Not rate-limit error: ");
-      console.log(error.response);
+      console.log("Error");
+      console.log("Status: " + statusCode);
+      console.log("Data: " + message);
+      console.log("Headers: " + error.response.headers);
+      if (error.response.status >= 500) {
+        console.log("Server-side error, retrying upload...");
+        setTimeout(startUpload, 3000);
+      } else {
+        core.setFailed("Status: " + statusCode + " Message: " + message);
+      }
     }
   } else {
     console.log("Unknown Error: " + error);
+    core.setFailed("Unknown error");
   }
 }
