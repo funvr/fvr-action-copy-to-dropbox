@@ -5,6 +5,7 @@ const axios = require('axios').default;
 
 const srcPath = core.getInput('srcPath', { required: true });
 const dstPath = core.getInput('dstPath', { required: true });
+const projectName = core.getInput('projectName', {required: true });
 let fullDstPath = dstPath;
 const appendTimestamp = (core.getInput('timestamp', {required: false}) == 'true');
 const dropboxToken = core.getInput('token', { required: true });
@@ -22,9 +23,6 @@ function configDstPath() {
     return;
   }
 
-  // If input dstPath is /My/Destination/Path/ProjectName/
-  // On 3rd April 2020 at 09:30 fullDstPath will be /My/Destination/Path/2020-04/ProjectName_2020-04-03_09-30/
-
   let date = new Date();
   let year = date.getFullYear();
   let month = date.getMonth() + 1;
@@ -40,6 +38,7 @@ function configDstPath() {
   if (hour < 10) {
     hour = '0' + hour;
   }
+
   let minute = date.getMinutes();
   if (minute < 10) {
     minute = '0' + minute;
@@ -51,14 +50,10 @@ function configDstPath() {
     fullDstPath = fullDstPath.substring(0, pathLength - 1);
   }
 
-  let pathSplits = fullDstPath.split('/');
-  // Use final directory name as project name
-  let projectName = pathSplits[pathSplits.length - 1];
   let yearMonth = year + '-' + month;
   let hourMinute = hour + '-' + minute;
 
-  fullDstPath = fullDstPath.replace(projectName, '');
-  fullDstPath = fullDstPath + yearMonth + '/' + projectName + '_' + yearMonth + '-' + day + '_' + hourMinute + '/';
+  fullDstPath = fullDstPath + '/' + yearMonth + '/' + projectName + '/' + projectName + '_' + yearMonth + '-' + day + '_' + hourMinute;
 }
 
 function checkDropboxAuthentication() {
@@ -97,7 +92,8 @@ function onAuthenticationFail(error) {
 
 function getDirFilesRecursive(dir) {
   fs.readdirSync(dir).forEach(item => {
-    const fullPath = path.join(dir, item);
+    const fullPath = path.join(dir, item).replace(/\\/g, '/');
+
     if (fs.lstatSync(fullPath).isDirectory()) {
       getDirFilesRecursive(fullPath);
     } else {
@@ -113,54 +109,22 @@ function startUpload() {
       core.setFailed(err.message);
       return;
     }
-    
-    if (stats.size <= MAX_UPLOAD_BYTES) {
-      uploadFile(file, onUploadSuccess, onUploadFail);
-      return;
-    }
 
     uploadFileSession(file, stats);
   });
 }
 
-function uploadFile(filePath, onSuccess, onFail) {
-  console.log("File: " + filePath);
-  const fileDstPath = filePath.replace(srcPath, fullDstPath);
-  console.log("Uploading to: " + fileDstPath);
-
-  const fileContent = fs.readFileSync(filePath);
-  const apiArgs = {
-    path: fileDstPath,
-    mute: true
-  }
-
-  const url = "https://content.dropboxapi.com/2/files/upload";
-  axios({
-    url: url,
-    method: 'post',
-    maxContentLength: MAX_UPLOAD_BYTES,
-    headers: {
-      'Authorization' : 'Bearer ' + dropboxToken,
-      'Content-Type' : 'application/octet-stream',
-      'Dropbox-API-Arg' : JSON.stringify(apiArgs)
-    },
-    data : fileContent
-  }).then(function (response) {
-    onSuccess(filePath, response);
-  }).catch(function (error) {
-    onFail(error);
-  });
-}
-
 function uploadFileSession(filePath, fileStats) {
   console.log("File: " + filePath);
-  const fileDstPath = filePath.replace(srcPath, fullDstPath);
+  let fileDstPath = filePath.replace(srcPath, fullDstPath);
+
   console.log("Upload session start: " + fileDstPath);
 
+  const uploadSize = fileStats.size >= MAX_UPLOAD_BYTES ? MAX_UPLOAD_BYTES : fileStats.size;
   const fd = fs.openSync(filePath);
-  const buffer = Buffer.alloc(MAX_UPLOAD_BYTES);
+  const buffer = Buffer.alloc(uploadSize);
 
-  fs.read(fd, buffer, 0, MAX_UPLOAD_BYTES, 0, function(err, bytesRead, buff) {
+  fs.read(fd, buffer, 0, uploadSize, 0, function(err, bytesRead, buff) {
     fs.closeSync(fd);
     if (err) {
       console.log(err);
@@ -168,7 +132,7 @@ function uploadFileSession(filePath, fileStats) {
       return;
     }
 
-    uploadSessionStart(buff, MAX_UPLOAD_BYTES, function(sessionId, numBytesSent) { 
+    uploadSessionStart(buff, uploadSize, function(sessionId, numBytesSent) { 
       onUploadChunkSuccess(sessionId, numBytesSent, filePath, fileStats); 
     });
   });
@@ -176,7 +140,7 @@ function uploadFileSession(filePath, fileStats) {
 
 function uploadSessionStart(data, dataSize, onChunkSent) {
   const url = "https://content.dropboxapi.com/2/files/upload_session/start";
-
+  
   axios({
     url: url,
     method: 'post',
@@ -189,8 +153,7 @@ function uploadSessionStart(data, dataSize, onChunkSent) {
   }).then(function (response) {
     onChunkSent(response.data.session_id, dataSize);
   }).catch(function (error) {
-    console.log(error);
-    core.setFailed(error.message);
+    onUploadFail(error);
   });
 }
 
@@ -212,7 +175,7 @@ function onUploadChunkSuccess(sessionId, numBytesSent, filePath, fileStats) {
 
 function uploadSessionFinish(sessionId, filePath, offset, remainingBytes, onSuccess, onFail) {
   console.log("File: " + filePath);
-  const fileDstPath = filePath.replace(srcPath, fullDstPath);
+  let fileDstPath = filePath.replace(srcPath, fullDstPath);
   console.log("Upload session finish: " + fileDstPath);
 
   const buffer = Buffer.alloc(remainingBytes);
@@ -259,7 +222,7 @@ function uploadSessionFinish(sessionId, filePath, offset, remainingBytes, onSucc
 
 function uploadSessionAppend(sessionId, filePath, offset, numBytes, onSuccess, onFail) {
   console.log("File: " + filePath);
-  const fileDstPath = filePath.replace(srcPath, fullDstPath);
+  let fileDstPath = filePath.replace(srcPath, fullDstPath);
   console.log("Upload session append: " + fileDstPath);
 
   const buffer = Buffer.alloc(numBytes);
@@ -284,7 +247,6 @@ function uploadSessionAppend(sessionId, filePath, offset, numBytes, onSuccess, o
     };
 
     let jsonStr = JSON.stringify(apiArgs);
-    console.log("apiArgs: " + jsonStr);
 
     axios({
       url: url,
@@ -319,16 +281,26 @@ function onUploadSuccess(localFilePath, response) {
 
 function onUploadFail(error) {
   if (error.response) {
-    // Todo: Try again if it's a rate limit error
-    // Currently just logging occurances of this error
-    if (error.response.headers['retry-after']) {
+    let statusCode = error.response.status;
+    let message = error.response.data;
+    if (statusCode == 429) {
       console.log("Hit rate limit");
+      let waitForSeconds = error.response.headers['retry-after'];
+      setTimeout(startUpload, waitForSeconds * 1000);
     } else {
-      console.log("Not rate-limit error: ");
-      console.log(error.response);
+      console.log("Error");
+      console.log("Status: " + statusCode);
+      console.log("Data: " + message);
+      console.log("Headers: " + error.response.headers);
+      if (error.response.status >= 500) {
+        console.log("Server-side error, retrying upload...");
+        setTimeout(startUpload, 3000);
+      } else {
+        core.setFailed("Status: " + statusCode + " Message: " + message);
+      }
     }
   } else {
     console.log("Unknown Error: " + error);
+    core.setFailed("Unknown error");
   }
-  core.setFailed(error);
 }
