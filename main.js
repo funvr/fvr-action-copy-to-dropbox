@@ -151,6 +151,7 @@ function uploadSessionStart(data, dataSize, onChunkSent) {
     },
     data: data
   }).then(function (response) {
+    console.log('Upload session start response', response);
     onChunkSent(response.data.session_id, dataSize);
   }).catch(function (error) {
     onUploadFail(error);
@@ -213,6 +214,7 @@ function uploadSessionFinish(sessionId, filePath, offset, remainingBytes, onSucc
       },
       data: buff
     }).then(function (response) {
+      console.log('Upload session finish response', response);
       onSuccess(filePath, response);
     }).catch(function (error) {
       onFail(error);
@@ -259,6 +261,7 @@ function uploadSessionAppend(sessionId, filePath, offset, numBytes, onSuccess, o
       },
       data: buff
     }).then(function (response) {
+      console.log('Upload session append response', response);
       onSuccess(sessionId, offset + numBytes);
     }).catch(function (error) {
       onFail(error);
